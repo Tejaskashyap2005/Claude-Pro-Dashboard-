@@ -4,746 +4,657 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Claude Pro Accounts Dashboard</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <script>
+    // ╔══════════════════════════════════════════════════════════╗
+    // ║  YOUR FIREBASE CONFIG (from your project screenshot)    ║
+    // ╚══════════════════════════════════════════════════════════╝
+    const FIREBASE_CONFIG = {
+      apiKey: "AIzaSyCGynu44-4EgEmJ5oNvtNJIL3n3fobzU4g",
+      authDomain: "claude-pro-dashboard.firebaseapp.com",
+      databaseURL: "https://claude-pro-dashboard-default-rtdb.firebaseio.com",
+      projectId: "claude-pro-dashboard",
+      storageBucket: "claude-pro-dashboard.firebasestorage.app",
+      messagingSenderId: "140448067843",
+      appId: "1:140448067843:web:21267d6ed96a7729153936",
+      measurementId: "G-G409VW2PTJ"
+    };
+
+    // ✅ Firebase is ENABLED — all users share the same real-time data
+    const USE_FIREBASE = true;
+
+    // How many hours until an exhausted account auto-resets (Claude resets every ~5 hours)
+    const RESET_HOURS = 5;
+  </script>
+
   <style>
     :root {
       --bg: #f5f3ee;
       --card: #ffffff;
-      --card-hover: #fafaf8;
       --text: #1a1a1a;
-      --text-secondary: #5c5c5c;
+      --text-sec: #5c5c5c;
       --text-muted: #9a9a9a;
       --border: #e2e0da;
       --accent: #d97706;
       --accent-light: #fef3c7;
       --accent-dark: #92400e;
       --green: #059669;
-      --green-light: #d1fae5;
-      --green-dark: #065f46;
+      --green-lt: #d1fae5;
+      --green-dk: #065f46;
       --red: #dc2626;
-      --red-light: #fee2e2;
-      --red-dark: #991b1b;
+      --red-lt: #fee2e2;
+      --red-dk: #991b1b;
       --blue: #2563eb;
-      --blue-light: #dbeafe;
-      --blue-dark: #1e40af;
+      --blue-lt: #dbeafe;
+      --blue-dk: #1e40af;
       --purple: #7c3aed;
-      --purple-light: #ede9fe;
-      --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-      --shadow-md: 0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+      --purple-lt: #ede9fe;
+      --shadow: 0 1px 3px rgba(0,0,0,0.06);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
       --radius: 10px;
-      --radius-lg: 14px;
+      --rlg: 14px;
     }
-
     * { box-sizing: border-box; margin: 0; padding: 0; }
-
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      padding: 24px 16px;
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100vh; padding: 24px 16px;
     }
+    .container { max-width: 960px; margin: 0 auto; }
 
-    .container {
-      max-width: 960px;
-      margin: 0 auto;
-    }
+    .hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+    .hdr .left { display: flex; align-items: center; gap: 14px; }
+    .logo { width: 44px; height: 44px; background: linear-gradient(135deg, var(--accent), #b45309); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 18px; }
+    .hdr h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.4px; }
+    .hdr .sub { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+    .hdr .right { display: flex; gap: 8px; align-items: center; }
 
-    /* ── Header ── */
-    .page-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 28px;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-    .page-header .left {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }
-    .logo {
-      width: 44px; height: 44px;
-      background: linear-gradient(135deg, var(--accent), #b45309);
-      border-radius: 12px;
-      display: flex; align-items: center; justify-content: center;
-      color: #fff;
-      font-weight: 700;
-      font-size: 18px;
-    }
-    .page-title { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
-    .page-subtitle { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
-    .btn-primary {
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      border-radius: var(--radius);
-      padding: 10px 20px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      transition: all 0.15s;
-    }
-    .btn-primary:hover { background: #b45309; transform: translateY(-1px); box-shadow: var(--shadow-md); }
+    .conn-badge { font-size: 12px; padding: 6px 14px; border-radius: 20px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .conn-badge.online { background: var(--green-lt); color: var(--green-dk); }
+    .conn-badge.offline { background: #fef3c7; color: var(--accent-dark); }
+    .conn-badge.error { background: var(--red-lt); color: var(--red-dk); }
+    .conn-badge .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .conn-badge.online .dot { background: var(--green); animation: pulse 2s infinite; }
+    .conn-badge.offline .dot { background: var(--accent); }
+    .conn-badge.error .dot { background: var(--red); }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
 
-    /* ── Stats ── */
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 14px;
-      margin-bottom: 24px;
-    }
-    .stat-card {
-      background: var(--card);
-      border-radius: var(--radius-lg);
-      padding: 20px;
-      box-shadow: var(--shadow);
-      border: 1px solid var(--border);
-    }
-    .stat-card .label {
-      font-size: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: var(--text-muted);
-      margin-bottom: 8px;
-    }
-    .stat-card .value { font-size: 32px; font-weight: 700; }
-    .stat-card .value.green { color: var(--green); }
-    .stat-card .value.red { color: var(--red); }
-    .stat-card .value.blue { color: var(--blue); }
-    .stat-card .value.purple { color: var(--purple); }
-    .stat-card .sub {
-      font-size: 12px;
-      color: var(--text-muted);
-      margin-top: 4px;
-    }
-
-    /* ── Modal ── */
-    .modal-overlay {
-      display: none;
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.4);
-      z-index: 1000;
-      align-items: center;
-      justify-content: center;
-      padding: 16px;
-    }
-    .modal-overlay.active { display: flex; }
-    .modal {
-      background: var(--card);
-      border-radius: var(--radius-lg);
-      padding: 28px;
-      width: 100%;
-      max-width: 520px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.15);
-      animation: slideUp 0.25s ease;
-    }
-    @keyframes slideUp {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .modal h3 {
-      font-size: 18px;
-      font-weight: 700;
-      margin-bottom: 6px;
-    }
-    .modal .desc {
-      font-size: 13px;
-      color: var(--text-secondary);
-      margin-bottom: 20px;
-      line-height: 1.5;
-    }
-    .form-group { margin-bottom: 16px; }
-    .form-group label {
-      display: block;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text-secondary);
-      margin-bottom: 6px;
-    }
-    .form-group input, .form-group select {
-      width: 100%;
-      padding: 10px 14px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      font-size: 14px;
-      font-family: inherit;
-      color: var(--text);
-      background: #fafaf8;
-      transition: border 0.15s;
-    }
-    .form-group input:focus, .form-group select:focus {
-      outline: none;
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px var(--accent-light);
-    }
-    .form-group input::placeholder { color: var(--text-muted); }
-    .form-group .hint {
-      font-size: 12px;
-      color: var(--text-muted);
-      margin-top: 5px;
-      line-height: 1.4;
-    }
-    .form-row { display: flex; gap: 12px; }
-    .form-row .form-group { flex: 1; }
-    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
-    .btn-cancel {
-      background: transparent;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 10px 20px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      color: var(--text-secondary);
-    }
+    .btn { border: none; border-radius: var(--radius); padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.15s; font-family: inherit; }
+    .btn-p { background: var(--accent); color: #fff; }
+    .btn-p:hover { background: #b45309; }
+    .btn-cancel { background: transparent; border: 1px solid var(--border); color: var(--text-sec); }
     .btn-cancel:hover { background: var(--bg); }
 
-    /* ── Toolbar ── */
-    .toolbar {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 20px;
-      flex-wrap: wrap;
-      align-items: center;
-    }
-    .search-input {
-      flex: 1;
-      min-width: 200px;
-      padding: 10px 14px 10px 38px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      font-size: 14px;
-      font-family: inherit;
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
+    .sc { background: var(--card); border-radius: var(--rlg); padding: 18px; box-shadow: var(--shadow); border: 1px solid var(--border); }
+    .sc .lb { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 6px; }
+    .sc .vl { font-size: 30px; font-weight: 700; }
+    .sc .vl.g { color: var(--green); }
+    .sc .vl.r { color: var(--red); }
+    .sc .vl.b { color: var(--blue); }
+    .sc .vl.p { color: var(--purple); }
+    .sc .info { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+    .next-reset { margin-top: 6px; font-size: 12px; color: var(--accent-dark); font-weight: 600; background: var(--accent-light); padding: 4px 10px; border-radius: 6px; display: inline-block; }
+
+    .toolbar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+    .search {
+      flex: 1; min-width: 200px; padding: 10px 14px 10px 38px;
+      border: 1px solid var(--border); border-radius: var(--radius);
+      font-size: 14px; font-family: inherit;
       background: var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%239a9a9a' viewBox='0 0 24 24'%3E%3Cpath d='M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z'/%3E%3C/svg%3E") no-repeat 12px center;
     }
-    .search-input:focus { outline: none; border-color: var(--accent); }
-    .filter-pills { display: flex; gap: 6px; }
-    .pill {
-      padding: 8px 16px;
-      border-radius: 20px;
-      border: 1px solid var(--border);
-      background: var(--card);
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      color: var(--text-secondary);
-      transition: all 0.15s;
-    }
+    .search:focus { outline: none; border-color: var(--accent); }
+    .pills { display: flex; gap: 6px; }
+    .pill { padding: 8px 16px; border-radius: 20px; border: 1px solid var(--border); background: var(--card); font-size: 13px; font-weight: 500; cursor: pointer; color: var(--text-sec); transition: all 0.15s; font-family: inherit; }
     .pill:hover { border-color: var(--accent); color: var(--accent); }
-    .pill.active {
-      background: var(--accent);
-      color: #fff;
-      border-color: var(--accent);
-    }
+    .pill.on { background: var(--accent); color: #fff; border-color: var(--accent); }
 
-    /* ── Account Cards ── */
-    .accounts-grid {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-    .account-card {
-      background: var(--card);
-      border-radius: var(--radius-lg);
-      padding: 18px 20px;
-      box-shadow: var(--shadow);
-      border: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      transition: all 0.2s;
-      flex-wrap: wrap;
-    }
-    .account-card:hover { box-shadow: var(--shadow-md); border-color: #ccc; }
-    .account-card.exhausted { border-left: 4px solid var(--red); }
-    .account-card.available { border-left: 4px solid var(--green); }
+    .settings-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; background: var(--card); border-radius: var(--radius); padding: 10px 16px; border: 1px solid var(--border); font-size: 13px; flex-wrap: wrap; }
+    .settings-bar label { color: var(--text-sec); font-weight: 500; }
+    .settings-bar select { padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; font-family: inherit; }
+    .settings-bar .note { color: var(--text-muted); font-size: 12px; }
 
-    .avatar {
-      width: 46px; height: 46px;
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-weight: 700;
-      font-size: 15px;
-      flex-shrink: 0;
+    .grid { display: flex; flex-direction: column; gap: 12px; }
+    .card {
+      background: var(--card); border-radius: var(--rlg); padding: 18px 20px;
+      box-shadow: var(--shadow); border: 1px solid var(--border);
+      display: flex; align-items: center; gap: 16px; transition: all 0.2s; flex-wrap: wrap;
     }
-    .avatar.av { background: var(--green-light); color: var(--green-dark); }
-    .avatar.ex { background: var(--red-light); color: var(--red-dark); }
+    .card:hover { box-shadow: var(--shadow-md); }
+    .card.exhausted { border-left: 4px solid var(--red); }
+    .card.available { border-left: 4px solid var(--green); }
+    .av { width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; flex-shrink: 0; }
+    .av.g { background: var(--green-lt); color: var(--green-dk); }
+    .av.r { background: var(--red-lt); color: var(--red-dk); }
+    .nfo { flex: 1; min-width: 150px; }
+    .nfo .nm { font-size: 15px; font-weight: 600; }
+    .nfo .em { font-size: 13px; color: var(--text-sec); margin-top: 2px; }
+    .nfo .meta { font-size: 12px; color: var(--text-muted); margin-top: 4px; display: flex; gap: 10px; flex-wrap: wrap; }
 
-    .info { flex: 1; min-width: 160px; }
-    .info .name { font-size: 15px; font-weight: 600; }
-    .info .email { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
-    .info .meta { font-size: 12px; color: var(--text-muted); margin-top: 4px; display: flex; gap: 12px; flex-wrap: wrap; }
-
-    .status-badge {
-      font-size: 12px; font-weight: 600;
-      padding: 5px 14px;
-      border-radius: 20px;
-      flex-shrink: 0;
+    .countdown {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: #fff7ed; color: #c2410c; font-size: 12px; font-weight: 600;
+      padding: 4px 12px; border-radius: 6px; margin-top: 6px;
+      border: 1px solid #fed7aa;
     }
-    .status-badge.available { background: var(--green-light); color: var(--green-dark); }
-    .status-badge.exhausted { background: var(--red-light); color: var(--red-dark); }
+    .countdown .timer-icon { font-size: 14px; }
 
-    .card-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+    .badge { font-size: 12px; font-weight: 600; padding: 5px 14px; border-radius: 20px; flex-shrink: 0; }
+    .badge.available { background: var(--green-lt); color: var(--green-dk); }
+    .badge.exhausted { background: var(--red-lt); color: var(--red-dk); }
+    .acts { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
     .btn-use {
-      padding: 8px 18px;
-      border-radius: var(--radius);
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      border: none;
+      padding: 8px 18px; border-radius: var(--radius); font-size: 13px;
+      font-weight: 600; cursor: pointer; border: none;
       display: flex; align-items: center; gap: 6px;
-      text-decoration: none;
-      transition: all 0.15s;
+      text-decoration: none; transition: all 0.15s; font-family: inherit;
     }
-    .btn-use.active {
-      background: var(--green);
-      color: #fff;
+    .btn-use.active { background: var(--green); color: #fff; }
+    .btn-use.active:hover { background: var(--green-dk); }
+    .btn-use.disabled { background: #f0f0f0; color: var(--text-muted); pointer-events: none; }
+    .bi {
+      width: 36px; height: 36px; border-radius: var(--radius);
+      border: 1px solid var(--border); background: var(--card);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-size: 15px; color: var(--text-sec); transition: all 0.15s; font-family: inherit;
     }
-    .btn-use.active:hover { background: var(--green-dark); transform: translateY(-1px); }
-    .btn-use.disabled {
-      background: #f0f0f0;
-      color: var(--text-muted);
-      pointer-events: none;
-    }
-    .btn-icon {
-      width: 36px; height: 36px;
-      border-radius: var(--radius);
-      border: 1px solid var(--border);
-      background: var(--card);
-      cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 16px;
-      color: var(--text-secondary);
-      transition: all 0.15s;
-    }
-    .btn-icon:hover { background: var(--bg); border-color: #bbb; }
-    .btn-icon.danger:hover { background: var(--red-light); color: var(--red); border-color: var(--red); }
+    .bi:hover { background: var(--bg); }
+    .bi.danger:hover { background: var(--red-lt); color: var(--red); border-color: var(--red); }
 
-    .empty-state {
-      text-align: center;
-      padding: 60px 20px;
-      background: var(--card);
-      border-radius: var(--radius-lg);
-      border: 1px dashed var(--border);
-    }
-    .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
-    .empty-state .title { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
-    .empty-state .desc { font-size: 13px; color: var(--text-muted); }
+    .empty { text-align: center; padding: 60px 20px; background: var(--card); border-radius: var(--rlg); border: 1px dashed var(--border); }
+    .empty .ei { font-size: 48px; margin-bottom: 12px; }
+    .empty .et { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+    .empty .ed { font-size: 13px; color: var(--text-muted); }
 
-    /* ── How-to Section ── */
-    .howto {
-      margin-top: 32px;
-      background: var(--card);
-      border-radius: var(--radius-lg);
-      padding: 24px;
-      box-shadow: var(--shadow);
-      border: 1px solid var(--border);
-    }
-    .howto h3 { font-size: 17px; font-weight: 700; margin-bottom: 16px; color: var(--accent-dark); }
-    .howto .steps { display: flex; flex-direction: column; gap: 16px; }
-    .step {
-      display: flex; gap: 14px; align-items: flex-start;
-    }
-    .step-num {
-      width: 28px; height: 28px;
-      background: var(--accent-light);
-      color: var(--accent-dark);
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 13px; font-weight: 700;
-      flex-shrink: 0;
-    }
-    .step-content { flex: 1; }
-    .step-content .step-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
-    .step-content p { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
-    .step-content code {
-      background: var(--bg);
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 12px;
-      font-family: 'SF Mono', 'Fira Code', monospace;
-      color: var(--accent-dark);
-    }
+    .mo { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 1000; align-items: center; justify-content: center; padding: 16px; }
+    .mo.on { display: flex; }
+    .md { background: var(--card); border-radius: var(--rlg); padding: 28px; width: 100%; max-width: 520px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); animation: sUp 0.25s ease; }
+    @keyframes sUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .md h3 { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+    .md .desc { font-size: 13px; color: var(--text-sec); margin-bottom: 20px; line-height: 1.5; }
+    .fg { margin-bottom: 16px; }
+    .fg label { display: block; font-size: 13px; font-weight: 600; color: var(--text-sec); margin-bottom: 6px; }
+    .fg input, .fg select { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 14px; font-family: inherit; background: #fafaf8; }
+    .fg input:focus, .fg select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+    .fg .hint { font-size: 12px; color: var(--text-muted); margin-top: 4px; line-height: 1.4; }
+    .fr { display: flex; gap: 12px; }
+    .fr .fg { flex: 1; }
+    .ma { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
 
-    /* ── Responsive ── */
+    /* Error Banner */
+    .error-banner {
+      background: var(--red-lt); border: 1px solid #fca5a5; border-radius: var(--radius);
+      padding: 14px 18px; margin-bottom: 20px; font-size: 13px; color: var(--red-dk);
+      line-height: 1.6; display: none;
+    }
+    .error-banner.show { display: block; }
+    .error-banner strong { font-weight: 700; }
+    .error-banner code { background: #fff; padding: 2px 6px; border-radius: 4px; font-size: 12px; font-family: monospace; }
+
+    .toast { position: fixed; bottom: 24px; right: 24px; background: #1a1a1a; color: #fff; padding: 12px 20px; border-radius: var(--radius); font-size: 14px; font-weight: 500; box-shadow: 0 8px 24px rgba(0,0,0,0.2); z-index: 2000; display: none; }
+    .toast.show { display: block; animation: tIn 0.3s ease; }
+    @keyframes tIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
     @media (max-width: 600px) {
-      .form-row { flex-direction: column; }
-      .card-actions { width: 100%; justify-content: flex-end; }
+      .fr { flex-direction: column; }
+      .acts { width: 100%; justify-content: flex-end; }
       .stats { grid-template-columns: repeat(2, 1fr); }
       .toolbar { flex-direction: column; }
-      .filter-pills { width: 100%; }
-    }
-
-    /* ── Toast ── */
-    .toast {
-      position: fixed;
-      bottom: 24px; right: 24px;
-      background: #1a1a1a;
-      color: #fff;
-      padding: 12px 20px;
-      border-radius: var(--radius);
-      font-size: 14px;
-      font-weight: 500;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-      z-index: 2000;
-      animation: toastIn 0.3s ease;
-      display: none;
-    }
-    .toast.show { display: block; }
-    @keyframes toastIn {
-      from { opacity: 0; transform: translateY(12px); }
-      to { opacity: 1; transform: translateY(0); }
+      .hdr { flex-direction: column; align-items: flex-start; }
     }
   </style>
 </head>
 <body>
 
-  <div class="container">
-    <!-- Header -->
-    <div class="page-header">
-      <div class="left">
-        <div class="logo">C</div>
-        <div>
-          <div class="page-title">Claude Pro accounts</div>
-          <div class="page-subtitle">Manage shared team accounts — find one with available tokens</div>
-        </div>
+<div class="container">
+  <div class="hdr">
+    <div class="left">
+      <div class="logo">C</div>
+      <div>
+        <h1>Claude Pro accounts</h1>
+        <div class="sub">Shared team dashboard — auto-resets after token cooldown</div>
       </div>
-      <button class="btn-primary" onclick="openModal()">
+    </div>
+    <div class="right">
+      <div class="conn-badge" id="connBadge">
+        <span class="dot"></span>
+        <span id="connText">Connecting...</span>
+      </div>
+      <button class="btn btn-p" onclick="openModal()">
         <span style="font-size:18px">+</span> Add account
       </button>
     </div>
+  </div>
 
-    <!-- Stats -->
-    <div class="stats" id="stats"></div>
+  <!-- Error Banner (shows if Firebase fails) -->
+  <div class="error-banner" id="errorBanner"></div>
 
-    <!-- Toolbar -->
-    <div class="toolbar">
-      <input type="text" class="search-input" id="search" placeholder="Search by name, email, or department..." oninput="renderList()">
-      <div class="filter-pills" id="filters">
-        <button class="pill active" onclick="setFilter('all', this)">All</button>
-        <button class="pill" onclick="setFilter('available', this)">&#9679; Available</button>
-        <button class="pill" onclick="setFilter('exhausted', this)">&#9679; Exhausted</button>
-      </div>
-    </div>
+  <div class="stats" id="stats"></div>
 
-    <!-- Accounts List -->
-    <div class="accounts-grid" id="accountsList"></div>
+  <div class="settings-bar">
+    <label>&#9202; Auto-reset timer:</label>
+    <select id="resetHours" onchange="changeResetHours()">
+      <option value="1">1 hour</option>
+      <option value="2">2 hours</option>
+      <option value="3">3 hours</option>
+      <option value="4">4 hours</option>
+      <option value="5" selected>5 hours (Claude default)</option>
+      <option value="6">6 hours</option>
+      <option value="8">8 hours</option>
+      <option value="10">10 hours</option>
+      <option value="12">12 hours</option>
+    </select>
+    <span class="note">Exhausted accounts automatically flip back to "Available" after this period</span>
+  </div>
 
-    <!-- How-To Guide -->
-    <div class="howto">
-      <h3>&#128218; How to add a Claude Pro account to this dashboard</h3>
-      <div class="steps">
-        <div class="step">
-          <div class="step-num">1</div>
-          <div class="step-content">
-            <div class="step-title">Get a Claude Pro subscription</div>
-            <p>Go to <code>claude.ai</code> and sign up or upgrade an account to Pro plan ($20/month). Each account gets its own token limit (currently ~45 messages per 5 hours for Sonnet, less for Opus).</p>
-          </div>
-        </div>
-        <div class="step">
-          <div class="step-num">2</div>
-          <div class="step-content">
-            <div class="step-title">Note the login credentials</div>
-            <p>Save the email and password for that Claude Pro account. This is what employees will use to log in when they need tokens.</p>
-          </div>
-        </div>
-        <div class="step">
-          <div class="step-num">3</div>
-          <div class="step-content">
-            <div class="step-title">Click "Add account" on this dashboard</div>
-            <p>Enter a friendly name (e.g. "Marketing Team Claude"), the login email, the department, and set the Claude link to <code>https://claude.ai/login</code> — this is the URL employees will click to open and log in.</p>
-          </div>
-        </div>
-        <div class="step">
-          <div class="step-num">4</div>
-          <div class="step-content">
-            <div class="step-title">Managing token status</div>
-            <p>When someone runs out of tokens, they click the <strong>toggle button</strong> (&#9650;/&#9660;) on the card to mark it as "Exhausted." Other team members can then see which accounts are still available. When the token limit resets (typically every 5 hours), toggle it back to "Available."</p>
-          </div>
-        </div>
-        <div class="step">
-          <div class="step-num">5</div>
-          <div class="step-content">
-            <div class="step-title">Employees pick an available account</div>
-            <p>Employees visit this dashboard, filter by "Available", and click <strong>"Open Claude &#8599;"</strong> on any green account. They log in with that account's credentials and start working. Simple as that.</p>
-          </div>
-        </div>
-      </div>
+  <div class="toolbar">
+    <input type="text" class="search" id="search" placeholder="Search by name, email, or department..." oninput="renderList()">
+    <div class="pills" id="filters">
+      <button class="pill on" onclick="setFilter('all',this)">All</button>
+      <button class="pill" onclick="setFilter('available',this)">&#9679; Available</button>
+      <button class="pill" onclick="setFilter('exhausted',this)">&#9679; Exhausted</button>
     </div>
   </div>
 
-  <!-- Add Account Modal -->
-  <div class="modal-overlay" id="modal" onclick="closeModalOutside(event)">
-    <div class="modal">
-      <h3>Add a Claude Pro account</h3>
-      <p class="desc">Add a new shared Claude account. Employees will use the link to access this account when they need tokens.</p>
+  <div class="grid" id="list"></div>
+</div>
 
-      <div class="form-group">
-        <label>Account name *</label>
-        <input type="text" id="inp-name" placeholder="e.g. Marketing Team Claude">
-        <div class="hint">A friendly name so people know which account this is</div>
-      </div>
-
-      <div class="form-row">
-        <div class="form-group">
-          <label>Login email *</label>
-          <input type="email" id="inp-email" placeholder="team-marketing@company.com">
-        </div>
-        <div class="form-group">
-          <label>Department</label>
-          <input type="text" id="inp-dept" placeholder="e.g. Marketing">
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label>Password / access note</label>
-        <input type="text" id="inp-pass" placeholder="e.g. Check 1Password vault 'AI Tools'">
-        <div class="hint">How employees find the password (don't store the actual password here)</div>
-      </div>
-
-      <div class="form-group">
-        <label>Claude link</label>
-        <input type="url" id="inp-link" placeholder="https://claude.ai/login" value="https://claude.ai/login">
-        <div class="hint">The URL employees click to open Claude and log in</div>
-      </div>
-
-      <div class="form-group">
-        <label>Plan type</label>
-        <select id="inp-plan">
-          <option value="Pro">Claude Pro ($20/mo)</option>
-          <option value="Team">Claude Team ($25/mo)</option>
-          <option value="Enterprise">Claude Enterprise</option>
-        </select>
-      </div>
-
-      <div class="modal-actions">
-        <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-        <button class="btn-primary" onclick="addAccount()">Add account</button>
-      </div>
+<!-- Add Modal -->
+<div class="mo" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="md">
+    <h3>Add a Claude Pro account</h3>
+    <p class="desc">Add a shared Claude account. When tokens run out, it auto-resets after the cooldown period.</p>
+    <div class="fg">
+      <label>Account name *</label>
+      <input type="text" id="inp-name" placeholder="e.g. Marketing Team Claude">
+    </div>
+    <div class="fr">
+      <div class="fg"><label>Login email *</label><input type="email" id="inp-email" placeholder="team@company.com"></div>
+      <div class="fg"><label>Department</label><input type="text" id="inp-dept" placeholder="e.g. Marketing"></div>
+    </div>
+    <div class="fg">
+      <label>Password hint</label>
+      <input type="text" id="inp-pass" placeholder="e.g. Check 1Password 'AI Tools' vault">
+      <div class="hint">Where employees can find the password (never store actual passwords here)</div>
+    </div>
+    <div class="fg">
+      <label>Claude link</label>
+      <input type="url" id="inp-link" placeholder="https://claude.ai/login" value="https://claude.ai/login">
+    </div>
+    <div class="fg">
+      <label>Plan</label>
+      <select id="inp-plan">
+        <option value="Pro">Claude Pro ($20/mo)</option>
+        <option value="Team">Claude Team ($25/mo)</option>
+        <option value="Enterprise">Claude Enterprise</option>
+      </select>
+    </div>
+    <div class="ma">
+      <button class="btn btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-p" onclick="addAccount()">Add account</button>
     </div>
   </div>
+</div>
 
-  <!-- Toast -->
-  <div class="toast" id="toast"></div>
+<div class="toast" id="toast"></div>
 
-  <script>
-    // ─── Data ───
-    let accounts = [];
-    let currentFilter = 'all';
+<script>
+  // ─── State ───
+  let accounts = [];
+  let filter = 'all';
+  let resetHrs = RESET_HOURS;
+  let db = null;
+  let dbRef = null;
+  let timerInterval = null;
 
-    function load() {
-      try {
-        const saved = localStorage.getItem('claude_dashboard_accounts');
-        if (saved) { accounts = JSON.parse(saved); }
-      } catch(e) {}
-      render();
+  // ─── Init ───
+  function init() {
+    const savedHrs = localStorage.getItem('cd_reset_hours');
+    if (savedHrs) {
+      resetHrs = parseInt(savedHrs);
+      document.getElementById('resetHours').value = resetHrs;
     }
 
-    function save() {
-      try { localStorage.setItem('claude_dashboard_accounts', JSON.stringify(accounts)); } catch(e) {}
+    if (USE_FIREBASE && FIREBASE_CONFIG.apiKey !== "YOUR_API_KEY") {
+      initFirebase();
+    } else {
+      initLocal();
     }
 
-    function genId() {
-      return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-    }
+    // Auto-reset checker + countdown updater every 5 seconds (smoother timers)
+    timerInterval = setInterval(function() {
+      checkAutoReset();
+      updateCountdowns();
+    }, 5000);
+  }
 
-    // ─── Modal ───
-    function openModal() {
-      document.getElementById('modal').classList.add('active');
-    }
-    function closeModal() {
-      document.getElementById('modal').classList.remove('active');
-      clearForm();
-    }
-    function closeModalOutside(e) {
-      if (e.target === document.getElementById('modal')) closeModal();
-    }
+  // ─── Firebase Mode ───
+  function initFirebase() {
+    try {
+      firebase.initializeApp(FIREBASE_CONFIG);
+      db = firebase.database();
+      dbRef = db.ref('claude_accounts');
 
-    function clearForm() {
-      ['inp-name','inp-email','inp-dept','inp-pass'].forEach(id => document.getElementById(id).value = '');
-      document.getElementById('inp-link').value = 'https://claude.ai/login';
-      document.getElementById('inp-plan').value = 'Pro';
-    }
-
-    // ─── Add Account ───
-    function addAccount() {
-      const name = document.getElementById('inp-name').value.trim();
-      const email = document.getElementById('inp-email').value.trim();
-      const dept = document.getElementById('inp-dept').value.trim();
-      const pass = document.getElementById('inp-pass').value.trim();
-      const link = document.getElementById('inp-link').value.trim() || 'https://claude.ai/login';
-      const plan = document.getElementById('inp-plan').value;
-
-      if (!name) { showToast('Please enter an account name'); return; }
-      if (!email) { showToast('Please enter the login email'); return; }
-
-      accounts.push({
-        id: genId(),
-        name, email, dept, pass, link, plan,
-        status: 'available',
-        addedDate: new Date().toLocaleDateString(),
-        lastToggle: ''
+      // Test connection
+      var connRef = firebase.database().ref('.info/connected');
+      connRef.on('value', function(snap) {
+        if (snap.val() === true) {
+          setConnBadge('online');
+        } else {
+          setConnBadge('offline');
+        }
       });
 
-      save();
-      closeModal();
-      render();
-      showToast('Account added');
+      // Real-time listener — every browser updates instantly
+      dbRef.on('value', function(snap) {
+        var data = snap.val();
+        accounts = data ? Object.values(data) : [];
+        checkAutoReset();
+        render();
+      }, function(error) {
+        console.error('Firebase read error:', error);
+        showError('Firebase read failed: ' + error.message + '. Make sure you have created the Realtime Database in Firebase Console and the database URL is correct.');
+        setConnBadge('error');
+        initLocal();
+      });
+
+      setConnBadge('online');
+      toast('Connected to shared database');
+    } catch (e) {
+      console.error('Firebase init error:', e);
+      showError('Firebase connection failed: ' + e.message + '. Check your config values and make sure the Realtime Database exists.');
+      setConnBadge('error');
+      initLocal();
     }
+  }
 
-    // ─── Toggle Status ───
-    function toggleStatus(id) {
-      const acc = accounts.find(a => a.id === id);
-      if (!acc) return;
-      acc.status = acc.status === 'available' ? 'exhausted' : 'available';
-      const now = new Date();
-      acc.lastToggle = now.toLocaleString();
-      save();
-      render();
-      showToast(acc.status === 'available' ? 'Marked as available' : 'Marked as exhausted');
-    }
+  function saveFirebase() {
+    if (!dbRef) return;
+    var obj = {};
+    accounts.forEach(function(a) { obj[a.id] = a; });
+    dbRef.set(obj).catch(function(err) {
+      console.error('Firebase write error:', err);
+      showError('Could not save to Firebase: ' + err.message + '. Check your database rules (should allow read/write).');
+    });
+  }
 
-    // ─── Remove ───
-    function removeAccount(id) {
-      if (!confirm('Remove this account from the dashboard?')) return;
-      accounts = accounts.filter(a => a.id !== id);
-      save();
-      render();
-      showToast('Account removed');
-    }
+  // ─── Local Mode ───
+  function initLocal() {
+    try {
+      var saved = localStorage.getItem('cd_accounts');
+      if (saved) accounts = JSON.parse(saved);
+    } catch(e) {}
+    if (!db) setConnBadge('offline');
+    checkAutoReset();
+    render();
+  }
 
-    // ─── Filter ───
-    function setFilter(f, btn) {
-      currentFilter = f;
-      document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
-      btn.classList.add('active');
-      renderList();
-    }
+  function saveLocal() {
+    localStorage.setItem('cd_accounts', JSON.stringify(accounts));
+  }
 
-    // ─── Render ───
-    function render() {
-      renderStats();
-      renderList();
-    }
+  function saveAll() {
+    if (db) saveFirebase();
+    saveLocal(); // Always save locally as backup
+  }
 
-    function renderStats() {
-      const total = accounts.length;
-      const avail = accounts.filter(a => a.status === 'available').length;
-      const exh = accounts.filter(a => a.status === 'exhausted').length;
-      const depts = [...new Set(accounts.map(a => a.dept).filter(Boolean))].length;
+  function setConnBadge(state) {
+    var b = document.getElementById('connBadge');
+    var t = document.getElementById('connText');
+    b.className = 'conn-badge ' + state;
+    if (state === 'online') { t.textContent = 'Live sync'; }
+    else if (state === 'error') { t.textContent = 'DB error'; }
+    else { t.textContent = 'Local only'; }
+  }
 
-      document.getElementById('stats').innerHTML = `
-        <div class="stat-card">
-          <div class="label">Total accounts</div>
-          <div class="value blue">${total}</div>
-          <div class="sub">Registered on dashboard</div>
-        </div>
-        <div class="stat-card">
-          <div class="label">Available now</div>
-          <div class="value green">${avail}</div>
-          <div class="sub">Ready to use</div>
-        </div>
-        <div class="stat-card">
-          <div class="label">Tokens exhausted</div>
-          <div class="value red">${exh}</div>
-          <div class="sub">Waiting for reset</div>
-        </div>
-        <div class="stat-card">
-          <div class="label">Departments</div>
-          <div class="value purple">${depts}</div>
-          <div class="sub">Teams using Claude</div>
-        </div>
-      `;
-    }
+  function showError(msg) {
+    var el = document.getElementById('errorBanner');
+    el.innerHTML = '<strong>&#9888; Connection issue:</strong> ' + msg;
+    el.classList.add('show');
+  }
 
-    function renderList() {
-      const q = (document.getElementById('search').value || '').toLowerCase();
-      let list = [...accounts];
+  // ─── Auto Reset Logic ───
+  function checkAutoReset() {
+    var now = Date.now();
+    var changed = false;
+    var resetMs = resetHrs * 60 * 60 * 1000;
 
-      if (currentFilter === 'available') list = list.filter(a => a.status === 'available');
-      if (currentFilter === 'exhausted') list = list.filter(a => a.status === 'exhausted');
-      if (q) list = list.filter(a =>
-        a.name.toLowerCase().includes(q) ||
-        a.email.toLowerCase().includes(q) ||
-        (a.dept || '').toLowerCase().includes(q)
-      );
-
-      const el = document.getElementById('accountsList');
-
-      if (!list.length) {
-        el.innerHTML = `
-          <div class="empty-state">
-            <div class="icon">${accounts.length ? '&#128269;' : '&#128203;'}</div>
-            <div class="title">${accounts.length ? 'No matching accounts' : 'No accounts added yet'}</div>
-            <div class="desc">${accounts.length ? 'Try adjusting your search or filter' : 'Click "Add account" to register your first Claude Pro account'}</div>
-          </div>
-        `;
-        return;
+    accounts.forEach(function(a) {
+      if (a.status === 'exhausted' && a.exhaustedAt) {
+        var elapsed = now - a.exhaustedAt;
+        if (elapsed >= resetMs) {
+          a.status = 'available';
+          a.exhaustedAt = null;
+          a.autoReset = true;
+          changed = true;
+        }
       }
-
-      el.innerHTML = list.map(a => {
-        const initials = a.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-        const isAvail = a.status === 'available';
-        return `
-          <div class="account-card ${a.status}">
-            <div class="avatar ${isAvail ? 'av' : 'ex'}">${esc(initials)}</div>
-            <div class="info">
-              <div class="name">${esc(a.name)}</div>
-              <div class="email">${esc(a.email)}</div>
-              <div class="meta">
-                ${a.dept ? `<span>&#127970; ${esc(a.dept)}</span>` : ''}
-                <span>&#128179; ${esc(a.plan || 'Pro')}</span>
-                ${a.pass ? `<span>&#128272; ${esc(a.pass)}</span>` : ''}
-                ${a.lastToggle ? `<span>&#128339; ${esc(a.lastToggle)}</span>` : ''}
-              </div>
-            </div>
-            <span class="status-badge ${a.status}">${isAvail ? '&#9679; Available' : '&#9679; Exhausted'}</span>
-            <div class="card-actions">
-              <a class="btn-use ${isAvail ? 'active' : 'disabled'}" href="${esc(a.link)}" target="_blank" rel="noopener">
-                ${isAvail ? 'Open Claude &#8599;' : '&#128274; Locked'}
-              </a>
-              <button class="btn-icon" onclick="toggleStatus('${a.id}')" title="${isAvail ? 'Mark as exhausted' : 'Mark as available'}">
-                ${isAvail ? '&#9660;' : '&#9650;'}
-              </button>
-              <button class="btn-icon danger" onclick="removeAccount('${a.id}')" title="Remove account">
-                &#128465;
-              </button>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    function esc(s) {
-      const d = document.createElement('div');
-      d.textContent = s || '';
-      return d.innerHTML;
-    }
-
-    // ─── Toast ───
-    function showToast(msg) {
-      const t = document.getElementById('toast');
-      t.textContent = msg;
-      t.classList.add('show');
-      setTimeout(() => t.classList.remove('show'), 2500);
-    }
-
-    // ─── Keyboard ───
-    document.addEventListener('keydown', e => {
-      if (e.key === 'Escape') closeModal();
     });
 
-    // ─── Init ───
-    load();
-  </script>
+    if (changed) {
+      saveAll();
+      render();
+      toast('Account auto-reset to available');
+    }
+  }
+
+  function getTimeRemaining(exhaustedAt) {
+    if (!exhaustedAt) return null;
+    var resetMs = resetHrs * 60 * 60 * 1000;
+    var remaining = resetMs - (Date.now() - exhaustedAt);
+    if (remaining <= 0) return null;
+    return {
+      hrs: Math.floor(remaining / 3600000),
+      mins: Math.floor((remaining % 3600000) / 60000),
+      secs: Math.floor((remaining % 60000) / 1000),
+      total: remaining
+    };
+  }
+
+  function updateCountdowns() {
+    accounts.forEach(function(a) {
+      if (a.status === 'exhausted' && a.exhaustedAt) {
+        var el = document.getElementById('cd-' + a.id);
+        if (!el) return;
+        var rem = getTimeRemaining(a.exhaustedAt);
+        if (rem) {
+          el.textContent = pad(rem.hrs) + ':' + pad(rem.mins) + ':' + pad(rem.secs) + ' until auto-reset';
+        } else {
+          el.textContent = 'Resetting...';
+        }
+      }
+    });
+
+    var nextEl = document.getElementById('nextResetStat');
+    if (nextEl) {
+      var exhausted = accounts.filter(function(a) { return a.status === 'exhausted' && a.exhaustedAt; });
+      if (exhausted.length) {
+        var soonest = { total: Infinity };
+        exhausted.forEach(function(a) {
+          var r = getTimeRemaining(a.exhaustedAt);
+          if (r && r.total < soonest.total) soonest = r;
+        });
+        if (soonest.total < Infinity) {
+          nextEl.textContent = 'Next reset: ' + soonest.hrs + 'h ' + soonest.mins + 'm';
+        }
+      }
+    }
+  }
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  function changeResetHours() {
+    resetHrs = parseInt(document.getElementById('resetHours').value);
+    localStorage.setItem('cd_reset_hours', resetHrs);
+    checkAutoReset();
+    render();
+    toast('Reset timer updated to ' + resetHrs + ' hours');
+  }
+
+  // ─── CRUD ───
+  function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+  function addAccount() {
+    var name = document.getElementById('inp-name').value.trim();
+    var email = document.getElementById('inp-email').value.trim();
+    var dept = document.getElementById('inp-dept').value.trim();
+    var pass = document.getElementById('inp-pass').value.trim();
+    var link = document.getElementById('inp-link').value.trim() || 'https://claude.ai/login';
+    var plan = document.getElementById('inp-plan').value;
+
+    if (!name) { toast('Enter an account name'); return; }
+    if (!email) { toast('Enter the login email'); return; }
+
+    accounts.push({
+      id: genId(), name: name, email: email, dept: dept, pass: pass,
+      link: link, plan: plan,
+      status: 'available',
+      exhaustedAt: null,
+      addedDate: new Date().toLocaleDateString()
+    });
+
+    saveAll();
+    closeModal();
+    render();
+    toast('Account added');
+  }
+
+  function toggleStatus(id) {
+    var a = accounts.find(function(x) { return x.id === id; });
+    if (!a) return;
+
+    if (a.status === 'available') {
+      a.status = 'exhausted';
+      a.exhaustedAt = Date.now();
+      toast('Marked exhausted — auto-resets in ' + resetHrs + 'h');
+    } else {
+      a.status = 'available';
+      a.exhaustedAt = null;
+      toast('Marked available');
+    }
+    saveAll();
+    render();
+  }
+
+  function removeAccount(id) {
+    if (!confirm('Remove this account from the dashboard?')) return;
+    accounts = accounts.filter(function(x) { return x.id !== id; });
+    saveAll();
+    render();
+    toast('Account removed');
+  }
+
+  // ─── UI ───
+  function openModal() { document.getElementById('modal').classList.add('on'); }
+  function closeModal() {
+    document.getElementById('modal').classList.remove('on');
+    ['inp-name','inp-email','inp-dept','inp-pass'].forEach(function(id) {
+      document.getElementById(id).value = '';
+    });
+    document.getElementById('inp-link').value = 'https://claude.ai/login';
+  }
+
+  function setFilter(f, btn) {
+    filter = f;
+    document.querySelectorAll('.pill').forEach(function(p) { p.classList.remove('on'); });
+    btn.classList.add('on');
+    renderList();
+  }
+
+  function render() {
+    renderStats();
+    renderList();
+    updateCountdowns();
+  }
+
+  function renderStats() {
+    var t = accounts.length;
+    var a = accounts.filter(function(x) { return x.status === 'available'; }).length;
+    var e = accounts.filter(function(x) { return x.status === 'exhausted'; }).length;
+    var hasExhausted = accounts.some(function(x) { return x.status === 'exhausted' && x.exhaustedAt; });
+    var nextResetHtml = hasExhausted ? '<div class="next-reset" id="nextResetStat">Calculating...</div>' : '';
+
+    document.getElementById('stats').innerHTML =
+      '<div class="sc"><div class="lb">Total accounts</div><div class="vl b">' + t + '</div><div class="info">Registered</div></div>' +
+      '<div class="sc"><div class="lb">Available</div><div class="vl g">' + a + '</div><div class="info">Ready to use</div></div>' +
+      '<div class="sc"><div class="lb">Exhausted</div><div class="vl r">' + e + '</div><div class="info">Cooling down</div>' + nextResetHtml + '</div>' +
+      '<div class="sc"><div class="lb">Auto-reset</div><div class="vl p">' + resetHrs + 'h</div><div class="info">Cooldown period</div></div>';
+  }
+
+  function renderList() {
+    var q = (document.getElementById('search').value || '').toLowerCase();
+    var list = accounts.slice();
+
+    if (filter === 'available') list = list.filter(function(a) { return a.status === 'available'; });
+    if (filter === 'exhausted') list = list.filter(function(a) { return a.status === 'exhausted'; });
+    if (q) list = list.filter(function(a) {
+      return a.name.toLowerCase().indexOf(q) !== -1 ||
+             a.email.toLowerCase().indexOf(q) !== -1 ||
+             (a.dept || '').toLowerCase().indexOf(q) !== -1;
+    });
+
+    var el = document.getElementById('list');
+
+    if (!list.length) {
+      el.innerHTML = '<div class="empty"><div class="ei">' + (accounts.length ? '&#128269;' : '&#128203;') + '</div><div class="et">' + (accounts.length ? 'No matching accounts' : 'No accounts yet') + '</div><div class="ed">' + (accounts.length ? 'Try adjusting your search' : 'Click "Add account" to get started') + '</div></div>';
+      return;
+    }
+
+    el.innerHTML = list.map(function(a) {
+      var ini = a.name.split(' ').map(function(w) { return w[0]; }).join('').slice(0, 2).toUpperCase();
+      var ok = a.status === 'available';
+      var rem = !ok && a.exhaustedAt ? getTimeRemaining(a.exhaustedAt) : null;
+      var countdownHtml = '';
+      if (rem) {
+        countdownHtml = '<div class="countdown"><span class="timer-icon">&#9202;</span> <span id="cd-' + a.id + '">' + pad(rem.hrs) + ':' + pad(rem.mins) + ':' + pad(rem.secs) + ' until auto-reset</span></div>';
+      }
+
+      return '<div class="card ' + a.status + '">' +
+        '<div class="av ' + (ok ? 'g' : 'r') + '">' + esc(ini) + '</div>' +
+        '<div class="nfo">' +
+          '<div class="nm">' + esc(a.name) + '</div>' +
+          '<div class="em">' + esc(a.email) + '</div>' +
+          '<div class="meta">' +
+            (a.dept ? '<span>&#127970; ' + esc(a.dept) + '</span>' : '') +
+            '<span>&#128179; ' + esc(a.plan || 'Pro') + '</span>' +
+            (a.pass ? '<span>&#128272; ' + esc(a.pass) + '</span>' : '') +
+          '</div>' +
+          countdownHtml +
+        '</div>' +
+        '<span class="badge ' + a.status + '">' + (ok ? '&#9679; Available' : '&#9679; Exhausted') + '</span>' +
+        '<div class="acts">' +
+          '<a class="btn-use ' + (ok ? 'active' : 'disabled') + '" href="' + esc(a.link) + '" target="_blank" rel="noopener">' + (ok ? 'Open Claude &#8599;' : '&#128274; Cooling down') + '</a>' +
+          '<button class="bi" onclick="toggleStatus(\'' + a.id + '\')" title="' + (ok ? 'Mark exhausted' : 'Mark available') + '">' + (ok ? '&#9660;' : '&#9650;') + '</button>' +
+          '<button class="bi danger" onclick="removeAccount(\'' + a.id + '\')" title="Remove">&#128465;</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  function esc(s) {
+    var d = document.createElement('div');
+    d.textContent = s || '';
+    return d.innerHTML;
+  }
+
+  function toast(m) {
+    var t = document.getElementById('toast');
+    t.textContent = m;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(function() { t.classList.remove('show'); }, 2500);
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeModal();
+  });
+
+  // Start!
+  init();
+</script>
 
 </body>
 </html>
