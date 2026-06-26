@@ -194,6 +194,30 @@
     .error-banner strong { font-weight: 700; }
     .error-banner code { background: #fff; padding: 2px 6px; border-radius: 4px; font-size: 12px; font-family: monospace; }
 
+    /* Login Helper Modal */
+    .login-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1100; align-items: center; justify-content: center; padding: 16px; }
+    .login-modal.on { display: flex; }
+    .login-box { background: var(--card); border-radius: var(--rlg); padding: 28px; width: 100%; max-width: 480px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); animation: sUp 0.25s ease; }
+    .login-box h3 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+    .login-box .login-sub { font-size: 13px; color: var(--text-sec); margin-bottom: 20px; }
+    .cred-row { display: flex; align-items: center; gap: 8px; background: #fafaf8; border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 10px; }
+    .cred-row .cred-label { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-muted); min-width: 70px; }
+    .cred-row .cred-value { flex: 1; font-size: 14px; font-weight: 500; font-family: 'SF Mono', 'Fira Code', monospace; word-break: break-all; }
+    .cred-row .cred-value.password-hidden { letter-spacing: 3px; }
+    .btn-copy { background: var(--blue-lt); color: var(--blue-dk); border: none; border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; font-family: inherit; }
+    .btn-copy:hover { background: #bfdbfe; }
+    .btn-copy.copied { background: var(--green-lt); color: var(--green-dk); }
+    .login-steps { margin: 18px 0; padding: 16px; background: var(--accent-light); border-radius: var(--radius); }
+    .login-steps .ls-title { font-size: 13px; font-weight: 700; color: var(--accent-dark); margin-bottom: 10px; }
+    .login-steps ol { padding-left: 20px; font-size: 13px; color: var(--accent-dark); line-height: 2; }
+    .login-steps ol li { padding-left: 4px; }
+    .login-steps kbd { background: #fff; border: 1px solid var(--border); border-radius: 4px; padding: 2px 6px; font-size: 11px; font-family: inherit; font-weight: 600; }
+    .login-actions { display: flex; gap: 10px; margin-top: 20px; }
+    .login-actions .btn { flex: 1; justify-content: center; }
+    .btn-open-claude { background: var(--green); color: #fff; font-size: 15px; padding: 12px; }
+    .btn-open-claude:hover { background: var(--green-dk); }
+    .toggle-pass { background: none; border: none; cursor: pointer; font-size: 16px; color: var(--text-muted); padding: 4px; }
+
     .toast { position: fixed; bottom: 24px; right: 24px; background: #1a1a1a; color: #fff; padding: 12px 20px; border-radius: var(--radius); font-size: 14px; font-weight: 500; box-shadow: 0 8px 24px rgba(0,0,0,0.2); z-index: 2000; display: none; }
     .toast.show { display: block; animation: tIn 0.3s ease; }
     @keyframes tIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
@@ -276,9 +300,9 @@
       <div class="fg"><label>Department</label><input type="text" id="inp-dept" placeholder="e.g. Marketing"></div>
     </div>
     <div class="fg">
-      <label>Password hint</label>
-      <input type="text" id="inp-pass" placeholder="e.g. Check 1Password 'AI Tools' vault">
-      <div class="hint">Where employees can find the password (never store actual passwords here)</div>
+      <label>Password *</label>
+      <input type="password" id="inp-pass" placeholder="Enter the account password">
+      <div class="hint">This password will be shown to employees when they click "Open Claude" so they can log in</div>
     </div>
     <div class="fg">
       <label>Claude link</label>
@@ -300,6 +324,41 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- Login Helper Modal -->
+<div class="login-modal" id="loginModal" onclick="if(event.target===this)closeLogin()">
+  <div class="login-box">
+    <h3 id="login-title">Login to account</h3>
+    <div class="login-sub">Use these credentials in an incognito/private window</div>
+
+    <div class="cred-row">
+      <span class="cred-label">Email</span>
+      <span class="cred-value" id="login-email">—</span>
+      <button class="btn-copy" onclick="copyText('login-email', this)">Copy</button>
+    </div>
+
+    <div class="cred-row">
+      <span class="cred-label">Password</span>
+      <span class="cred-value password-hidden" id="login-pass">—</span>
+      <button class="toggle-pass" onclick="togglePassword()" title="Show/hide password" id="togglePassBtn">&#128065;</button>
+      <button class="btn-copy" onclick="copyText('login-pass', this)">Copy</button>
+    </div>
+
+    <div class="login-steps">
+      <div class="ls-title">&#9757; How to log in (3 steps)</div>
+      <ol>
+        <li>Open an <strong>incognito window</strong> (<kbd>Ctrl+Shift+N</kbd> or <kbd>Cmd+Shift+N</kbd>)</li>
+        <li>Click the green button below — Claude will open in the new tab</li>
+        <li>Paste the email and password to log in</li>
+      </ol>
+    </div>
+
+    <div class="login-actions">
+      <button class="btn btn-cancel" onclick="closeLogin()">Cancel</button>
+      <a class="btn btn-open-claude" id="login-link" href="https://claude.ai/login" target="_blank" rel="noopener" onclick="onLoginOpen()">&#9889; Open Claude in new tab</a>
+    </div>
+  </div>
+</div>
 
 <script>
   // ─── State ───
@@ -620,13 +679,13 @@
           '<div class="meta">' +
             (a.dept ? '<span>&#127970; ' + esc(a.dept) + '</span>' : '') +
             '<span>&#128179; ' + esc(a.plan || 'Pro') + '</span>' +
-            (a.pass ? '<span>&#128272; ' + esc(a.pass) + '</span>' : '') +
+            (a.pass ? '<span>&#128272; Password saved</span>' : '<span style="color:var(--red)">&#9888; No password</span>') +
           '</div>' +
           countdownHtml +
         '</div>' +
         '<span class="badge ' + a.status + '">' + (ok ? '&#9679; Available' : '&#9679; Exhausted') + '</span>' +
         '<div class="acts">' +
-          '<a class="btn-use ' + (ok ? 'active' : 'disabled') + '" href="' + esc(a.link) + '" target="_blank" rel="noopener">' + (ok ? 'Open Claude &#8599;' : '&#128274; Cooling down') + '</a>' +
+          '<button class="btn-use ' + (ok ? 'active' : 'disabled') + '" onclick="openLogin(\'' + a.id + '\')">' + (ok ? '&#128275; Open Claude' : '&#128274; Cooling down') + '</button>' +
           '<button class="bi" onclick="toggleStatus(\'' + a.id + '\')" title="' + (ok ? 'Mark exhausted' : 'Mark available') + '">' + (ok ? '&#9660;' : '&#9650;') + '</button>' +
           '<button class="bi danger" onclick="removeAccount(\'' + a.id + '\')" title="Remove">&#128465;</button>' +
         '</div>' +
@@ -649,8 +708,88 @@
   }
 
   document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') closeModal();
+    if (e.key === 'Escape') { closeModal(); closeLogin(); }
   });
+
+  // ─── Login Helper ───
+  var currentLoginAccount = null;
+  var passVisible = false;
+
+  function openLogin(id) {
+    var a = accounts.find(function(x) { return x.id === id; });
+    if (!a || a.status !== 'available') return;
+    currentLoginAccount = a;
+    passVisible = false;
+
+    document.getElementById('login-title').textContent = a.name;
+    document.getElementById('login-email').textContent = a.email;
+
+    var passEl = document.getElementById('login-pass');
+    if (a.pass) {
+      passEl.textContent = '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022';
+      passEl.className = 'cred-value password-hidden';
+      passEl.setAttribute('data-pass', a.pass);
+    } else {
+      passEl.textContent = 'No password saved';
+      passEl.className = 'cred-value';
+      passEl.setAttribute('data-pass', '');
+    }
+
+    document.getElementById('login-link').href = a.link || 'https://claude.ai/login';
+    document.getElementById('togglePassBtn').textContent = '\uD83D\uDC41';
+    document.getElementById('loginModal').classList.add('on');
+  }
+
+  function closeLogin() {
+    document.getElementById('loginModal').classList.remove('on');
+    currentLoginAccount = null;
+    passVisible = false;
+  }
+
+  function togglePassword() {
+    if (!currentLoginAccount) return;
+    var passEl = document.getElementById('login-pass');
+    var btnEl = document.getElementById('togglePassBtn');
+    passVisible = !passVisible;
+    if (passVisible) {
+      passEl.textContent = currentLoginAccount.pass || 'No password saved';
+      passEl.className = 'cred-value';
+      btnEl.textContent = '\uD83D\uDE48';
+    } else {
+      passEl.textContent = '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022';
+      passEl.className = 'cred-value password-hidden';
+      btnEl.textContent = '\uD83D\uDC41';
+    }
+  }
+
+  function copyText(elementId, btn) {
+    var el = document.getElementById(elementId);
+    var text = el.getAttribute('data-pass') || el.textContent;
+    navigator.clipboard.writeText(text).then(function() {
+      var orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(function() {
+        btn.textContent = orig;
+        btn.classList.remove('copied');
+      }, 1500);
+    }).catch(function() {
+      // Fallback for older browsers
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(function() { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+    });
+  }
+
+  function onLoginOpen() {
+    toast('Claude opened — paste your credentials in the incognito tab');
+  }
 
   // Start!
   init();
